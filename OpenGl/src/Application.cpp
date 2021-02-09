@@ -127,6 +127,11 @@ int main(void)
 	if (!glfwInit())
 		return -1;
 
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+
 	/* Create a windowed mode window and its OpenGL context */
 	window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
 	if (!window)
@@ -164,16 +169,20 @@ int main(void)
 		2,3,0
 	};
 
-
+	/*  For holding vertex array object id [openGL Core] */
+	unsigned int vao;
+	GLCall(glGenVertexArrays(1, &vao));
+	GLCall(glBindVertexArray(vao));
+	   
 	/* Define triangle vertex render buffer */
 	unsigned int buffer;
 	GLCall(glGenBuffers(1, &buffer));
 	GLCall(glBindBuffer(GL_ARRAY_BUFFER, buffer));
-	GLCall(glBufferData(GL_ARRAY_BUFFER, 6 * 2 * sizeof(float), positions, GL_STATIC_DRAW));
+	GLCall(glBufferData(GL_ARRAY_BUFFER, 4 * 2 * sizeof(float), positions, GL_STATIC_DRAW));
 
 	/* After the buffer is bind, create Vertex Attribute */
 	GLCall(glEnableVertexAttribArray(0));
-	GLCall(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0));
+	GLCall(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0)); // links the 'buffer' with the 'vao'
 
 	/* Define vertex index buffer */
 	unsigned int indexBufferId;
@@ -191,6 +200,7 @@ int main(void)
 
 	unsigned int shader = createShader(source.VertexSource, source.FragmentSource);
 	GLCall(glUseProgram(shader));
+	
 
 	/* Uniform variable from the basic.shader file
 		- to set data into the shader file (vec4 -> 4f)
@@ -198,6 +208,12 @@ int main(void)
 	GLCall(int location = glGetUniformLocation(shader, "u_Color"));
 	ASSERT(location != -1);
 	GLCall(glUniform4f(location, 0.8f, 0.3f, 0.8f, 1.0f));
+
+	/* Unbind everything */
+	GLCall(glUseProgram(0));
+	GLCall(glBindBuffer(GL_ARRAY_BUFFER, 0));
+	GLCall(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
+
 
 	float r = 0.0f;
 	float increment = 0.05f;
@@ -208,8 +224,15 @@ int main(void)
 		/* Render here */
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		/* Call to make a the triangle with index buffer( must be unsigned int) */
+		/* Bind before drawing */
+		GLCall(glUseProgram(shader));
 		GLCall(glUniform4f(location, r, 0.3f, 0.8f, 1.0f));
+
+		/* Bind vertex array and index buffer objects */
+		GLCall(glBindVertexArray(vao));
+		GLCall(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferId));
+
+		/* Call to make a the triangle with index buffer( must be unsigned int) */
 		GLCall(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr));
 
 		/* animate box color */
@@ -219,7 +242,6 @@ int main(void)
 			increment = 0.05f;
 		r += increment;
 		
-
 
 		/* Swap front and back buffers */
 		glfwSwapBuffers(window);

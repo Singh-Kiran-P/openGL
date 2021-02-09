@@ -28,7 +28,7 @@ static bool GLLogCall(const char* function, const char* file, int line)
 	while (GLenum error = glGetError())
 	{
 		cout << "[OpenGL Error] (" << error << ")" << function <<
-			" " << file << ":" <<  line << endl;
+			" " << file << ":" << line << endl;
 		return false;
 	}
 
@@ -80,20 +80,20 @@ static unsigned int complileShader(unsigned int type, const string& source)
 {
 	unsigned int id = glCreateShader(type);
 	const char* src = source.c_str();
-	glShaderSource(id, 1, &src, nullptr);
-	glCompileShader(id);
+	GLCall(glShaderSource(id, 1, &src, nullptr));
+	GLCall(glCompileShader(id));
 
 	int res;
-	glGetShaderiv(id, GL_COMPILE_STATUS, &res);
+	GLCall(glGetShaderiv(id, GL_COMPILE_STATUS, &res));
 	if (res == GL_FALSE)
 	{
 		int len;
-		glGetShaderiv(id, GL_INFO_LOG_LENGTH, &len);
+		GLCall(glGetShaderiv(id, GL_INFO_LOG_LENGTH, &len));
 		char* message = (char*)alloca(len * sizeof(char));
-		glGetShaderInfoLog(id, len, &len, message);
+		GLCall(glGetShaderInfoLog(id, len, &len, message));
 		cout << "Failt to compile" << (type == GL_VERTEX_SHADER ? "vertex" : "fragment") << endl;
 		cout << message << endl;
-		glDeleteShader(id);
+		GLCall(glDeleteShader(id));
 		return 0;
 	}
 
@@ -106,13 +106,13 @@ static unsigned int createShader(const string& vertexShader, const string& fragm
 	unsigned int vs = complileShader(GL_VERTEX_SHADER, vertexShader);
 	unsigned int fs = complileShader(GL_FRAGMENT_SHADER, fragmentShader);
 
-	glAttachShader(program, vs);
-	glAttachShader(program, fs);
-	glLinkProgram(program);
-	glValidateProgram(program);
+	GLCall(glAttachShader(program, vs));
+	GLCall(glAttachShader(program, fs));
+	GLCall(glLinkProgram(program));
+	GLCall(glValidateProgram(program));
 
-	glDeleteShader(vs);
-	glDeleteShader(fs);
+	GLCall(glDeleteShader(vs));
+	GLCall(glDeleteShader(fs));
 
 	return program;
 
@@ -137,6 +137,9 @@ int main(void)
 
 	/* Make the window's context current */
 	glfwMakeContextCurrent(window);
+
+	/* change the frame rate */
+	glfwSwapInterval(1);
 
 	/* init Glew Linker */
 	GLenum err = glewInit();
@@ -164,19 +167,19 @@ int main(void)
 
 	/* Define triangle vertex render buffer */
 	unsigned int buffer;
-	glGenBuffers(1, &buffer);
-	glBindBuffer(GL_ARRAY_BUFFER, buffer);
-	glBufferData(GL_ARRAY_BUFFER, 6 * 2 * sizeof(float), positions, GL_STATIC_DRAW);
+	GLCall(glGenBuffers(1, &buffer));
+	GLCall(glBindBuffer(GL_ARRAY_BUFFER, buffer));
+	GLCall(glBufferData(GL_ARRAY_BUFFER, 6 * 2 * sizeof(float), positions, GL_STATIC_DRAW));
 
 	/* After the buffer is bind, create Vertex Attribute */
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0);
+	GLCall(glEnableVertexAttribArray(0));
+	GLCall(glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0));
 
 	/* Define vertex index buffer */
 	unsigned int indexBufferId;
-	glGenBuffers(1, &indexBufferId);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferId);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indices, GL_STATIC_DRAW);
+	GLCall(glGenBuffers(1, &indexBufferId));
+	GLCall(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferId));
+	GLCall(glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indices, GL_STATIC_DRAW));
 
 
 	/* Read shaders from file and create shaders */
@@ -187,11 +190,17 @@ int main(void)
 	cout << source.FragmentSource << endl;
 
 	unsigned int shader = createShader(source.VertexSource, source.FragmentSource);
-	glUseProgram(shader);
+	GLCall(glUseProgram(shader));
 
-	/* Unbind the current GL buffer */
-	//glBindBuffer(GL_ARRAY_BUFFER, 0);
+	/* Uniform variable from the basic.shader file
+		- to set data into the shader file (vec4 -> 4f)
+	*/
+	GLCall(int location = glGetUniformLocation(shader, "u_Color"));
+	ASSERT(location != -1);
+	GLCall(glUniform4f(location, 0.8f, 0.3f, 0.8f, 1.0f));
 
+	float r = 0.0f;
+	float increment = 0.05f;
 
 	/* Loop until the user closes the window */
 	while (!glfwWindowShouldClose(window))
@@ -200,7 +209,17 @@ int main(void)
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		/* Call to make a the triangle with index buffer( must be unsigned int) */
-		GLCall(glDrawElements(GL_TRIANGLES, 6, GL_INT, nullptr));
+		GLCall(glUniform4f(location, r, 0.3f, 0.8f, 1.0f));
+		GLCall(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr));
+
+		/* animate box color */
+		if (r > 1.0f)
+			increment = -0.05f;
+		else if (r < 0.0f)
+			increment = 0.05f;
+		r += increment;
+		
+
 
 		/* Swap front and back buffers */
 		glfwSwapBuffers(window);

@@ -119,22 +119,38 @@ int main(void)
 	std::cout << glGetString(GL_VERSION) << std::endl;
 
 	/* Triangle positions */
-	float positions[6] =
+	float positions[] =
 	{
-		-0.5f, -0.5f,
-		 0.0f,  0.5f,
-		 0.5f, -0.5f
+		-0.5f, -0.5f, // 0
+		 0.5f, -0.5f, // 1
+		 0.5f,  0.5f, // 2
+		-0.5f,  0.5f, // 3
+
 	};
+
+	unsigned int indices[] =
+	{
+		0,1,2,
+		2,3,0
+	};
+
 
 	/* Define triangle vertex render buffer */
 	unsigned int buffer;
 	glGenBuffers(1, &buffer);
 	glBindBuffer(GL_ARRAY_BUFFER, buffer);
-	glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(float), positions, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, 6 * 2 * sizeof(float), positions, GL_STATIC_DRAW);
 
 	/* After the buffer is bind, create Vertex Attribute */
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0);
+
+	/* Define vertex index buffer */
+	unsigned int indexBufferId;
+	glGenBuffers(1, &indexBufferId);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBufferId);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indices, GL_STATIC_DRAW);
+	
 
 	/* Read shaders from file and create shaders */
 	ShaderProgramSource source = ParseShader("res/shaders/Basic.shader");
@@ -156,8 +172,9 @@ int main(void)
 		/* Render here */
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		/* Call to make a triangle */
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		/* Call to make a the triangle with index buffer */
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+		
 
 		/* Swap front and back buffers */
 		glfwSwapBuffers(window);
